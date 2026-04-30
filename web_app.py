@@ -201,4 +201,6 @@ async def stream_events(job_id: str) -> StreamingResponse:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("web_app:app", host="127.0.0.1", port=8000, reload=False)
+    port = int(os.getenv("PORT", "7860"))
+    host = os.getenv("HOST", "0.0.0.0")
+    uvicorn.run("web_app:app", host=host, port=port, reload=False)
