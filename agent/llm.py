@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 import json
+import os
 from groq import Groq
+
+FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")
+DEEP_MODEL = os.getenv("GROQ_DEEP_MODEL", "openai/gpt-oss-120b")
+
+# gpt-oss models reason before answering, and reasoning tokens count against
+# max_tokens — reserve headroom so the JSON answer is never truncated.
+_REASONING_HEADROOM = 2048
 
 _SYSTEM = """You are an adversarial academic reviewer — a harsh but fair critic in the style of a Nature/Science desk reject. Your job is NOT to summarize or praise. Your job is to find problems: methodological flaws, unsupported claims, statistical errors, and quality signals that suggest low-quality or fabricated research.
 
@@ -12,7 +20,8 @@ Respond with valid JSON only. No markdown fences, no preamble, no explanation ou
 
 
 def _client() -> Groq:
-    return Groq()
+    # Free tier has tight per-minute token limits: let the SDK back off on 429s.
+    return Groq(max_retries=6)
 
 
 def _extract_json(text: str) -> dict | list:
@@ -34,12 +43,14 @@ def _call_llm(
     model: str,
     max_tokens: int,
     prompt: str,
+    reasoning_effort: str = "medium",
 ) -> str | None:
     """Single point of contact with the Groq API."""
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens + _REASONING_HEADROOM,
+            extra_body={"reasoning_effort": reasoning_effort},
             messages=[
                 {"role": "system", "content": _SYSTEM},
                 {"role": "user", "content": prompt},
@@ -53,7 +64,7 @@ def _call_llm(
         raise RuntimeError(f"Groq call failed for model {model}: {exc}") from exc
 
 
-# ── Quick classification / extraction (8b for speed) ─────────────────────────
+# ── Quick classification / extraction (fast model) ───────────────────────────
 
 def classify_paper(
     text: str,
@@ -77,7 +88,7 @@ Respond ONLY with this JSON:
 }}"""
 
     try:
-        text = _call_llm(client, model="llama-3.1-8b-instant", max_tokens=256, prompt=prompt)
+        text = _call_llm(client, model=FAST_MODEL, max_tokens=256, prompt=prompt, reasoning_effort="low")
     except RuntimeError:
         return {"paper_type": "unclear", "reasoning": "Classification API call failed"}
     result = _extract_json(text)
@@ -114,7 +125,7 @@ Respond ONLY with a JSON array:
 ]"""
 
     try:
-        text = _call_llm(client, model="llama-3.1-8b-instant", max_tokens=1024, prompt=prompt)
+        text = _call_llm(client, model=FAST_MODEL, max_tokens=1024, prompt=prompt, reasoning_effort="low")
     except RuntimeError:
         return []
     result = _extract_json(text)
@@ -191,7 +202,7 @@ Look for:
 check_type for all findings must be "statistical".
 {_FINDING_SCHEMA}"""
 
-    out = _call_llm(client, model="llama-3.3-70b-versatile", max_tokens=1500, prompt=prompt)
+    out = _call_llm(client, model=DEEP_MODEL, max_tokens=1500, prompt=prompt)
     if out is None:
         return []
     result = _extract_json(out)
@@ -221,7 +232,7 @@ For each claim, check:
 check_type for all findings must be "claim_support".
 {_FINDING_SCHEMA}"""
 
-    out = _call_llm(client, model="llama-3.3-70b-versatile", max_tokens=2000, prompt=prompt)
+    out = _call_llm(client, model=DEEP_MODEL, max_tokens=2000, prompt=prompt)
     if out is None:
         return []
     result = _extract_json(out)
@@ -253,7 +264,7 @@ Look for:
 check_type for all findings must be "citation".
 {_FINDING_SCHEMA}"""
 
-    out = _call_llm(client, model="llama-3.3-70b-versatile", max_tokens=1500, prompt=prompt)
+    out = _call_llm(client, model=DEEP_MODEL, max_tokens=1500, prompt=prompt)
     if out is None:
         return []
     result = _extract_json(out)
@@ -314,7 +325,7 @@ Do NOT re-flag the tortured phrases already listed above — the pre-scan handle
 check_type for all findings must be "language".
 {_FINDING_SCHEMA}"""
 
-    out = _call_llm(client, model="llama-3.3-70b-versatile", max_tokens=1500, prompt=prompt)
+    out = _call_llm(client, model=DEEP_MODEL, max_tokens=1500, prompt=prompt)
     if out is None:
         return findings
     result = _extract_json(out)
@@ -350,7 +361,7 @@ Look for:
 check_type for all findings must be "methodology".
 {_FINDING_SCHEMA}"""
 
-    out = _call_llm(client, model="llama-3.3-70b-versatile", max_tokens=1500, prompt=prompt)
+    out = _call_llm(client, model=DEEP_MODEL, max_tokens=1500, prompt=prompt)
     if out is None:
         return []
     result = _extract_json(out)

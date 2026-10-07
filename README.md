@@ -99,7 +99,7 @@ ingest → classify → plan → [statistical | claim_support | citation | langu
 
 - **`agent/graph.py`** — graph wiring
 - **`agent/nodes.py`** — node implementations
-- **`agent/llm.py`** — Groq prompts (Llama 3.1 8B for extraction, Llama 3.3 70B for adversarial checks)
+- **`agent/llm.py`** — Groq prompts (GPT-OSS 20B for extraction, GPT-OSS 120B for adversarial checks)
 - **`agent/grim.py`** — GRIM arithmetic validator (deterministic pre-scan)
 - **`agent/pdf.py`** — PDF / HTML / arXiv ingestion
 - **`agent/state.py`** — shared `AgentState` typed dict
