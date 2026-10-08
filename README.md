@@ -14,7 +14,7 @@ An AI agent that reviews academic papers like a hostile Nature/Science referee �
 
 Built with [LangGraph](https://github.com/langchain-ai/langgraph) and the [Groq API](https://groq.com).
 
-**Live demo:** https://huggingface.co/spaces/Riccardi4le/ARV_agent
+**Live demo:** https://riccardi4le-paper-verifier-suite.hf.space/arv/ — part of the [Paper Verifier Suite](https://github.com/Riccardi4le/paper-verifier-suite)
 
 ---
 
@@ -41,7 +41,7 @@ The methodology check is field-aware: pre-registration and ethics approval are *
 ### Hugging Face Space (no install)
 
 Just open the live demo and paste an arXiv URL or upload a PDF:
-👉 https://huggingface.co/spaces/Riccardi4le/ARV_agent
+👉 https://riccardi4le-paper-verifier-suite.hf.space/arv/
 
 ### Local
 
